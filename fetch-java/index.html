@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loading images with promise</title>
+    <script src="es6-promise.min.js"></script>
+
+    <script>
+	// This example is derived from http://www.javascriptkit.com/javatutors/javascriptpromises.shtml.
+        var doggies = ['dog1.png', 'dog2.png', 'dog3.png', 'dog4.png', 'dog5.png'];
+		// This function return a promise object, which represents an event that might happen in the future (image be loaded).
+        function getImage(url){
+            return new Promise(function(resolve, reject){
+                var img = new Image();
+                var rand = Math.round( Math.random() * 3000 ); // add random delay to resolve and reject to accentuate asynchronicity
+                img.onload = function(){
+                    setTimeout(function(){
+                        resolve(url);
+                    }, rand);
+                };
+                img.onerror = function(){
+                    setTimeout(function(){
+                        reject(url);
+                    }, rand);
+                };
+                img.src = url
+            })
+        };
+
+		// This function loads the images in sequence. 
+        function displayimagesInSequence(images){
+            var targetimage = images.shift(); // process doggies images one at a time
+            if (targetimage){ // if not end of array
+                getImage(targetimage).then(function(url){ // load image then ...  this is how we use the created promise object
+                    var dog = document.createElement('img');
+                    dog.setAttribute('src', url);
+                    doggyplayground1.appendChild(dog); // add image to DIV
+                    displayimagesInSequence(images); // recursion- call displayimagesInSequence() again to process next image/doggy
+                }).catch(function(url){ // handle an image not loading
+                    console.log('Error loading ' + url);
+                    displayimagesInSequence(images); // recursion- call displayimagesInSequence() again to process next image/doggy
+                });
+            }
+        }
+
+		// This function fetches and displays images at at once.
+        function displayimagesAtOnce(images){
+            var doggypromises = images.map(getImage); // call getImage on each array element and return array of promises
+            Promise.all(doggypromises).then(function(urls){
+                doggyplayground2.innerHTML = '';
+                for (var i=0; i<urls.length; i++){
+                    var dog = document.createElement('img');
+                    dog.setAttribute('src', urls[i]);
+                    doggyplayground2.appendChild(dog);
+                }
+            }).catch(function(urls){
+                console.log("Error fetching some images: " + urls);
+            })
+        }
+
+		// This function fetches images in parellel and displays them one by one
+        function displayimagesBestofBothWorlds(images){
+            var doggypromises = images.map(getImage); // call getImage on each array element and return array of promises
+            var sequence = Promise.resolve();
+
+            doggypromises.forEach(function(curPromise){ // create sequence of promises to act on each one in succession
+                sequence = sequence.then(function(){
+                    return curPromise;
+                }).then(function(url){
+                    var dog = document.createElement('img');
+                    dog.setAttribute('src', url);
+                    doggyplayground3.appendChild(dog);
+                }).catch(function(err){
+                    console.log(err + ' failed to load!');
+                });
+            });
+        }
+
+        function demo1(){
+            var doggies = ['dog1.png', 'dogo2.png', 'dog3.png', 'dig4.png', 'dog5.png'];
+            doggyplayground1.innerHTML = '';
+            displayimagesInSequence(doggies);
+        }
+
+        function demo2(){
+            var doggies = ['dog1.png', 'dog2.png', 'dog3.png', 'dog45.png', 'dog5.png'];
+            doggyplayground2.innerHTML = 'Fetching doggies...';
+            displayimagesAtOnce(doggies);
+        }
+
+        function demo3(){
+            var doggies = ['dog1.png', 'dog2.png', 'dug3.png', 'dog4.png', 'dog5.png'];
+            doggyplayground3.innerHTML = '';
+            displayimagesBestofBothWorlds(doggies);
+        }
+
+
+    </script>
+</head>
+<body>
+    <div id="doggyplayground1">&nbsp;</div>
+    <button onclick="demo1();">Fetch and display images sequentially</button>
+    <hr />
+    <div id="doggyplayground2">&nbsp;</div>
+    <button onclick="demo2();">Fetch and display images all at once</button>
+    <hr />
+    <div id="doggyplayground3">&nbsp;</div>
+    <button onclick="demo3();">Fetch images all at once in parallel, but display them in sequentially</button>
+</body>
+</html>
